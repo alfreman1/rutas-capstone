@@ -1,0 +1,527 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoGeneral {
+  ACTIVO
+  INACTIVO
+}
+
+enum EstadoContrato {
+  BORRADOR
+  ACTIVO
+  FINALIZADO
+  CANCELADO
+}
+
+enum EstadoJornada {
+  ABIERTA
+  PLANIFICADA
+  EN_EJECUCION
+  FINALIZADA
+  CANCELADA
+}
+
+enum EstadoPlanificacion {
+  BORRADOR
+  PROCESANDO
+  GENERADA
+  APROBADA
+  EN_EJECUCION
+  FINALIZADA
+  ERROR
+}
+
+enum EstadoRuta {
+  PENDIENTE
+  ASIGNADA
+  EN_CURSO
+  FINALIZADA
+  CANCELADA
+}
+
+enum EstadoEntrega {
+  PENDIENTE
+  EN_RUTA
+  ENTREGADA
+  PARCIAL
+  NO_ENTREGADA
+  CANCELADA
+}
+
+enum TipoVehiculo {
+  CAMION
+  CAMIONETA
+  FURGON
+  OTRO
+}
+
+enum TipoEstrategiaSectorizacion {
+  KMEANS
+  DBSCAN
+}
+
+enum EstadoOptimizacion {
+  PENDIENTE
+  PROCESANDO
+  COMPLETADA
+  ERROR
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nombre    String
+  email     String   @unique
+  password  String
+  estado    EstadoGeneral @default(ACTIVO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuarios UsuarioRol[]
+
+  @@index([estado])
+  @@index([createdAt])
+}
+
+model Rol {
+  id          String   @id @default(uuid())
+  nombre      String   @unique
+  descripcion String?
+  estado      EstadoGeneral @default(ACTIVO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuarios UsuarioRol[]
+  permisos RolPermiso[]
+}
+
+model Permiso {
+  id          String   @id @default(uuid())
+  codigo      String   @unique
+  nombre      String
+  descripcion String?
+  estado      EstadoGeneral @default(ACTIVO)
+
+  roles RolPermiso[]
+}
+
+model UsuarioRol {
+  usuarioId String
+  rolId     String
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  rol     Rol     @relation(fields: [rolId], references: [id])
+
+  @@id([usuarioId, rolId])
+}
+
+model RolPermiso {
+  rolId     String
+  permisoId String
+
+  rol     Rol     @relation(fields: [rolId], references: [id])
+  permiso Permiso @relation(fields: [permisoId], references: [id])
+
+  @@id([rolId, permisoId])
+}
+
+model Producto {
+  id          String @id @default(uuid())
+  codigo      String @unique
+  nombre      String
+  descripcion String?
+  estado      EstadoGeneral @default(ACTIVO)
+
+  presentaciones PresentacionProducto[]
+  demandaDetalles DemandaDetalle[]
+  stocks Stock[]
+  lotes Lote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nombre])
+  @@index([estado])
+}
+
+model PresentacionProducto {
+  id         String @id @default(uuid())
+  productoId String
+
+  nombre      String
+  unidades    Int
+  pesoKg      Decimal? @db.Decimal(12, 3)
+  volumenM3   Decimal? @db.Decimal(12, 6)
+  estado      EstadoGeneral @default(ACTIVO)
+
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productoId])
+}
+
+model Contrato {
+  id          String @id @default(uuid())
+  codigo      String @unique
+  nombre      String
+  descripcion String?
+
+  fechaInicio DateTime
+  fechaFin    DateTime?
+
+  estado EstadoContrato @default(BORRADOR)
+
+  puntosEntrega PuntoEntregaContrato[]
+  jornadas Jornada[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([estado])
+  @@index([fechaInicio, fechaFin])
+}
+
+model PuntoEntregaContrato {
+  id         String @id @default(uuid())
+  contratoId String
+
+  codigo      String
+  nombre      String
+  direccion   String?
+
+  latitud     Decimal @db.Decimal(10, 7)
+  longitud    Decimal @db.Decimal(10, 7)
+
+  tiempoServicioMinutos Int @default(10)
+
+  estado EstadoGeneral @default(ACTIVO)
+
+  contrato Contrato @relation(fields: [contratoId], references: [id])
+
+  ventanas VentanaEntrega[]
+  demandas Demanda[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([contratoId, codigo])
+  @@index([contratoId])
+  @@index([latitud, longitud])
+}
+
+model VentanaEntrega {
+  id                    String @id @default(uuid())
+  puntoEntregaContratoId String
+
+  diaSemana Int?
+
+  horaInicio DateTime
+  horaFin    DateTime
+
+  estado EstadoGeneral @default(ACTIVO)
+
+  puntoEntrega PuntoEntregaContrato @relation(fields: [puntoEntregaContratoId], references: [id])
+
+  @@index([puntoEntregaContratoId])
+}
+
+model Jornada {
+  id         String @id @default(uuid())
+  contratoId String
+
+  fecha DateTime
+  codigo String?
+
+  estado EstadoJornada @default(ABIERTA)
+
+  contrato Contrato @relation(fields: [contratoId], references: [id])
+
+  demandas Demanda[]
+  planificaciones Planificacion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([contratoId, fecha])
+  @@index([fecha])
+  @@index([estado])
+}
+
+model Demanda {
+  id                    String @id @default(uuid())
+  jornadaId             String
+  puntoEntregaContratoId String
+
+  observacion String?
+
+  jornada Jornada @relation(fields: [jornadaId], references: [id])
+  puntoEntrega PuntoEntregaContrato @relation(fields: [puntoEntregaContratoId], references: [id])
+
+  detalles DemandaDetalle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jornadaId, puntoEntregaContratoId])
+  @@index([jornadaId])
+  @@index([puntoEntregaContratoId])
+}
+
+model DemandaDetalle {
+  id         String @id @default(uuid())
+  demandaId  String
+  productoId String
+
+  cantidad Decimal @db.Decimal(12, 3)
+
+  demanda  Demanda  @relation(fields: [demandaId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([demandaId, productoId])
+  @@index([productoId])
+}
+
+model Almacen {
+  id          String @id @default(uuid())
+  codigo      String @unique
+  nombre      String
+  direccion   String?
+
+  latitud  Decimal? @db.Decimal(10, 7)
+  longitud Decimal? @db.Decimal(10, 7)
+
+  estado EstadoGeneral @default(ACTIVO)
+
+  lotes Lote[]
+  stocks Stock[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lote {
+  id         String @id @default(uuid())
+  almacenId  String
+  productoId String
+
+  codigo String
+
+  cantidad Decimal @db.Decimal(12, 3)
+
+  fechaIngreso DateTime
+  fechaVencimiento DateTime?
+
+  almacen Almacen @relation(fields: [almacenId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([almacenId, codigo])
+  @@index([productoId])
+  @@index([fechaVencimiento])
+}
+
+model Stock {
+  id         String @id @default(uuid())
+  almacenId  String
+  productoId String
+
+  cantidadDisponible Decimal @db.Decimal(12, 3)
+  cantidadReservada  Decimal @default(0) @db.Decimal(12, 3)
+
+  almacen  Almacen  @relation(fields: [almacenId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([almacenId, productoId])
+}
+
+model Vehiculo {
+  id String @id @default(uuid())
+
+  placa  String @unique
+  codigo String @unique
+  marca  String?
+  modelo String?
+
+  tipo TipoVehiculo
+
+  capacidadPesoKg   Decimal? @db.Decimal(12, 3)
+  capacidadVolumenM3 Decimal? @db.Decimal(12, 6)
+
+  estado EstadoGeneral @default(ACTIVO)
+
+  planificaciones Planificacion[]
+  cargas Carga[]
+  rutas Ruta[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([estado])
+}
+
+model Planificacion {
+  id        String @id @default(uuid())
+  jornadaId String
+  vehiculoId String?
+
+  fechaGeneracion DateTime @default(now())
+
+  estado EstadoPlanificacion @default(BORRADOR)
+
+  estrategiaSectorizacion TipoEstrategiaSectorizacion?
+
+  jornada  Jornada  @relation(fields: [jornadaId], references: [id])
+  vehiculo Vehiculo? @relation(fields: [vehiculoId], references: [id])
+
+  sectores Sector[]
+  cargas Carga[]
+  rutas Ruta[]
+  optimizaciones Optimizacion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jornadaId])
+  @@index([estado])
+}
+
+model Sector {
+  id             String @id @default(uuid())
+  planificacionId String
+
+  codigo String
+
+  algoritmo TipoEstrategiaSectorizacion
+
+  centroLatitud  Decimal? @db.Decimal(10, 7)
+  centroLongitud Decimal? @db.Decimal(10, 7)
+
+  parametros Json?
+
+  planificacion Planificacion @relation(fields: [planificacionId], references: [id])
+
+  puntos SectorPunto[]
+
+  @@unique([planificacionId, codigo])
+}
+
+model SectorPunto {
+  id             String @id @default(uuid())
+  sectorId       String
+  puntoEntregaId String
+
+  sector Sector @relation(fields: [sectorId], references: [id])
+
+  @@index([sectorId])
+  @@index([puntoEntregaId])
+}
+
+model Carga {
+  id             String @id @default(uuid())
+  planificacionId String
+  vehiculoId      String
+
+  pesoTotalKg   Decimal @default(0) @db.Decimal(12, 3)
+  volumenTotalM3 Decimal @default(0) @db.Decimal(12, 6)
+
+  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id])
+  planificacion Planificacion @relation(fields: [planificacionId], references: [id])
+
+  rutas Ruta[]
+
+  createdAt DateTime @default(now())
+
+  @@index([planificacionId])
+  @@index([vehiculoId])
+}
+
+model Ruta {
+  id             String @id @default(uuid())
+  planificacionId String
+  cargaId         String?
+  vehiculoId      String
+
+  codigo String
+
+  ordenGenerado Int?
+
+  distanciaKm Decimal? @db.Decimal(12, 3)
+  tiempoMinutos Int?
+
+  estado EstadoRuta @default(PENDIENTE)
+
+  planificacion Planificacion @relation(fields: [planificacionId], references: [id])
+  carga Carga? @relation(fields: [cargaId], references: [id])
+  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id])
+
+  entregas Entrega[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planificacionId])
+  @@index([vehiculoId])
+  @@index([estado])
+}
+
+model Entrega {
+  id String @id @default(uuid())
+
+  rutaId String
+  puntoEntregaId String
+  demandaId String?
+
+  orden Int
+
+  distanciaKm Decimal? @db.Decimal(12, 3)
+  tiempoEstimadoMinutos Int?
+
+  estado EstadoEntrega @default(PENDIENTE)
+
+  ruta Ruta @relation(fields: [rutaId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rutaId, orden])
+  @@index([puntoEntregaId])
+  @@index([demandaId])
+}
+
+model Optimizacion {
+  id             String @id @default(uuid())
+  planificacionId String
+
+  algoritmo String
+
+  parametros Json?
+  resultado Json?
+
+  distanciaInicialKm Decimal? @db.Decimal(12, 3)
+  distanciaFinalKm   Decimal? @db.Decimal(12, 3)
+
+  tiempoInicialMinutos Int?
+  tiempoFinalMinutos   Int?
+
+  mejoraDistanciaPorcentaje Decimal? @db.Decimal(8, 3)
+
+  estado EstadoOptimizacion @default(PENDIENTE)
+
+  iniciadoAt  DateTime?
+  finalizadoAt DateTime?
+
+  planificacion Planificacion @relation(fields: [planificacionId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([planificacionId])
+  @@index([estado])
+}
