@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { OPTIMIZACION_PORT, OptimizacionPort } from '../../domain/ports/optimizacion.port';
-import { PrismaService } from '../../../../../prisma/prisma.service';
+import { PrismaService } from '../../../../prisma/prisma.service';
 import { NotFoundDomainException } from '../../../../shared/domain/exceptions/domain.exception';
 
 @Injectable()
@@ -17,7 +17,7 @@ export class ConsultarEstadoOptimizacionUseCase {
     // 1. Buscar la optimización activa de esta planificación
     const optimizacion = await this.prisma.optimizacion.findFirst({
       where: { planificacionId },
-      orderBy: { creadoAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     if (!optimizacion) {
@@ -48,7 +48,7 @@ export class ConsultarEstadoOptimizacionUseCase {
         where: { id: optimizacion.id },
         data: {
           estado: 'COMPLETADA',
-          completadoAt: new Date(),
+          finalizadoAt: new Date(),
           resultado: {
             jobId,
             ...iaResponse.result
@@ -69,7 +69,7 @@ export class ConsultarEstadoOptimizacionUseCase {
         where: { id: optimizacion.id },
         data: {
           estado: 'ERROR',
-          completadoAt: new Date(),
+          finalizadoAt: new Date(),
           resultado: { jobId, error: iaResponse.error_detail }
         }
       });

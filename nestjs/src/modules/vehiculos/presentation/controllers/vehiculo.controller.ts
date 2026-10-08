@@ -1,10 +1,10 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { Roles } from '../../../shared/decorators/auth.decorator';
-import { CrearVehiculoUseCase } from '../application/use-cases/crear-vehiculo.use-case';
-import { ListarVehiculosUseCase } from '../application/use-cases/listar-vehiculos.use-case';
-import { CrearVehiculoDto } from '../application/dto/crear-vehiculo.dto';
-import { PaginationHelper } from '../../../shared/presentation/helpers/pagination.helper';
+import { Roles } from '../../../../shared/decorators/auth.decorator';
+import { CrearVehiculoUseCase } from '../../application/use-cases/crear-vehiculo.use-case';
+import { ListarVehiculosUseCase } from '../../application/use-cases/listar-vehiculos.use-case';
+import { CrearVehiculoDto } from '../../application/dto/crear-vehiculo.dto';
+import { PaginationHelper } from '../../../../shared/helpers/pagination.helper';
 
 @ApiTags('Logística / Vehículos')
 @Controller('vehiculos')
@@ -45,6 +45,6 @@ export class VehiculoController {
       tipo,
     });
 
-    return PaginationHelper.formatResponse(result.items, result.total, result.page, result.limit);
+    return PaginationHelper.createPaginatedResult(result.items, result.total, result.page, result.limit);
   }
 }

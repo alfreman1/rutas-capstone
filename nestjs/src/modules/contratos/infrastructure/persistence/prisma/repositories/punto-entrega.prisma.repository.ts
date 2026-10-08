@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PuntoEntregaRepository } from '../../../domain/repositories/punto-entrega.repository';
-import { PuntoEntrega } from '../../../domain/entities/punto-entrega.entity';
-import { VentanaEntrega } from '../../../domain/entities/ventana-entrega.entity';
+import { PuntoEntregaRepository } from '../../../../domain/repositories/punto-entrega.repository';
+import { PuntoEntrega } from '../../../../domain/entities/punto-entrega.entity';
+import { VentanaEntrega } from '../../../../domain/entities/ventana-entrega.entity';
 import { PrismaService } from '../../../../../../prisma/prisma.service';
 
 @Injectable()

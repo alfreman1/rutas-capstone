@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { OPTIMIZACION_PORT, OptimizacionPort } from '../../domain/ports/optimizacion.port';
-import { PrismaService } from '../../../../../prisma/prisma.service';
+import { PrismaService } from '../../../../prisma/prisma.service';
 import { BusinessRuleException, NotFoundDomainException } from '../../../../shared/domain/exceptions/domain.exception';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class SolicitarOptimizacionUseCase {
     private readonly prisma: PrismaService, // Direct Prisma used here for rapid scaffolding, ideally wrapped in Repositories
   ) {}
 
-  async execute(planificacionId: string, vehiculosIds: string[]): Promise<any> {
+  async execute(planificacionId: string, vehiculosIds: string[], algoritmo?: string): Promise<any> {
     // 1. Validaciones Iniciales
     const planificacion = await this.prisma.planificacion.findUnique({
       where: { id: planificacionId },
@@ -24,7 +24,7 @@ export class SolicitarOptimizacionUseCase {
       throw new NotFoundDomainException(`Planificación con ID ${planificacionId} no encontrada.`);
     }
 
-    if (planificacion.estado !== 'BORRADOR' && planificacion.estado !== 'ERROR') {
+    if (planificacion.estado !== 'BORRADOR' && planificacion.estado !== 'ERROR' && planificacion.estado !== 'GENERADA') {
       throw new BusinessRuleException(`No se puede optimizar una planificación en estado: ${planificacion.estado}`);
     }
 
@@ -93,6 +93,7 @@ export class SolicitarOptimizacionUseCase {
       const iaResponse = await this.optimizacionPort.solicitarOptimizacion({
         planificacionId,
         jornadaId: planificacion.jornadaId,
+        algoritmo: algoritmo || 'KMEANS_ORTOOLS',
         puntosEntrega,
         vehiculos: vehiculosPayload,
         restricciones: { tiempoMaximoRutaMinutos: 480 }, // 8 horas max

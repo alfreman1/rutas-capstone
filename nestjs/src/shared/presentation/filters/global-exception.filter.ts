@@ -1,6 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { DomainException } from '../domain/exceptions/domain.exception';
+import { DomainException } from '../../domain/exceptions/domain.exception';
 import { Prisma } from '@prisma/client';
 
 @Catch()

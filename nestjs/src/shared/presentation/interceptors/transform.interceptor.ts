@@ -1,7 +1,7 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { PaginatedResult } from '../application/dto/paginated-result.dto';
+import { PaginatedResult } from '../../application/dto/paginated-result.dto';
 
 export interface Response<T> {
   success: boolean;

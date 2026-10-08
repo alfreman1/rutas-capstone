@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { VehiculoRepository, VehiculoQuery, PaginatedVehiculos } from '../../../domain/repositories/vehiculo.repository';
-import { Vehiculo } from '../../../domain/entities/vehiculo.entity';
+import { VehiculoRepository, VehiculoQuery, PaginatedVehiculos } from '../../../../domain/repositories/vehiculo.repository';
+import { Vehiculo } from '../../../../domain/entities/vehiculo.entity';
 import { PrismaService } from '../../../../../../prisma/prisma.service';
 
 @Injectable()

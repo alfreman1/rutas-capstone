@@ -30,9 +30,11 @@ export class PythonOptimizacionAdapter implements OptimizacionPort {
       
       const response = await this.apiClient.post('/api/v1/optimize/routes/jobs', data);
       
+      const payload = response.data.data;
+      
       return {
-        jobId: response.data.job_id,
-        estado: response.data.status,
+        jobId: payload.job_id,
+        estado: payload.status,
       };
     } catch (error: any) {
       this.logger.error('Error al comunicarse con el Motor IA para iniciar optimización', error.message);
@@ -49,7 +51,7 @@ export class PythonOptimizacionAdapter implements OptimizacionPort {
   async consultarEstado(jobId: string): Promise<any> {
     try {
       const response = await this.apiClient.get(`/api/v1/optimize/routes/jobs/${jobId}`);
-      return response.data; // { status, result: {...metricas, rutas} }
+      return response.data.data; // { status, result: {...metricas, rutas} }
     } catch (error: any) {
       this.logger.error(`Error al consultar estado del job [${jobId}]`, error.message);
       throw new BusinessRuleException('No se pudo verificar el estado en el Motor de IA.', 'AI_ENGINE_FETCH_ERROR');

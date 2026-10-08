@@ -18,7 +18,7 @@ export class ListarUsuariosUseCase {
     result.data = result.data.map(user => {
       const { password, ...safeUser } = user;
       return safeUser as Partial<Usuario>;
-    });
+    }) as any;
 
     return result as PaginatedResult<Partial<Usuario>>;
   }

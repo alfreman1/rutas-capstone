@@ -1,7 +1,7 @@
 import { Controller, Get, Query, Injectable, Module } from '@nestjs/common';
-import { ListarUsuariosUseCase } from '../application/use-cases/listar-usuarios.use-case';
-import { PaginationParamsDto } from '../../../shared/application/dto/pagination-params.dto';
-import { Roles, Public } from '../../../shared/decorators/auth.decorator';
+import { ListarUsuariosUseCase } from '../../application/use-cases/listar-usuarios.use-case';
+import { PaginationParamsDto } from '../../../../shared/application/dto/pagination-params.dto';
+import { Roles, Public } from '../../../../shared/decorators/auth.decorator';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('Usuarios')

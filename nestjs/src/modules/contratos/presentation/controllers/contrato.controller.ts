@@ -1,13 +1,13 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { Roles } from '../../../shared/decorators/auth.decorator';
-import { CrearContratoUseCase } from '../application/use-cases/crear-contrato.use-case';
-import { ListarContratosUseCase } from '../application/use-cases/listar-contratos.use-case';
-import { CrearPuntoEntregaUseCase } from '../application/use-cases/crear-punto-entrega.use-case';
-import { ListarPuntosEntregaUseCase } from '../application/use-cases/listar-puntos-entrega.use-case';
-import { CrearContratoDto } from '../application/dto/crear-contrato.dto';
-import { CrearPuntoEntregaDto } from '../application/dto/crear-punto-entrega.dto';
-import { PaginationHelper } from '../../../shared/presentation/helpers/pagination.helper';
+import { Roles } from '../../../../shared/decorators/auth.decorator';
+import { CrearContratoUseCase } from '../../application/use-cases/crear-contrato.use-case';
+import { ListarContratosUseCase } from '../../application/use-cases/listar-contratos.use-case';
+import { CrearPuntoEntregaUseCase } from '../../application/use-cases/crear-punto-entrega.use-case';
+import { ListarPuntosEntregaUseCase } from '../../application/use-cases/listar-puntos-entrega.use-case';
+import { CrearContratoDto } from '../../application/dto/crear-contrato.dto';
+import { CrearPuntoEntregaDto } from '../../application/dto/crear-punto-entrega.dto';
+import { PaginationHelper } from '../../../../shared/helpers/pagination.helper';
 
 @ApiTags('Comercial / Contratos')
 @Controller('contratos')
@@ -47,7 +47,7 @@ export class ContratoController {
       estado,
     });
 
-    return PaginationHelper.formatResponse(result.items, result.total, result.page, result.limit);
+    return PaginationHelper.createPaginatedResult(result.items, result.total, result.page, result.limit);
   }
 
   @Post(':id/puntos-entrega')

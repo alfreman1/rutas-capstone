@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ContratoRepository, ContratoQuery, PaginatedResult } from '../../../domain/repositories/contrato.repository';
-import { Contrato } from '../../../domain/entities/contrato.entity';
+import { ContratoRepository, ContratoQuery, PaginatedResult } from '../../../../domain/repositories/contrato.repository';
+import { Contrato } from '../../../../domain/entities/contrato.entity';
 import { PrismaService } from '../../../../../../prisma/prisma.service';
 
 @Injectable()

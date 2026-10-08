@@ -1,6 +1,6 @@
 import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { USUARIO_REPOSITORY, UsuarioRepository } from '../../usuarios/domain/repositories/usuario.repository';
+import { USUARIO_REPOSITORY, UsuarioRepository } from '../../../usuarios/domain/repositories/usuario.repository';
 import * as argon2 from 'argon2';
 
 @Injectable()

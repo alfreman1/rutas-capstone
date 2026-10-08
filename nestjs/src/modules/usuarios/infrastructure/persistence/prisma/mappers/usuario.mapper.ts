@@ -1,5 +1,5 @@
 import { Usuario as PrismaUsuario, Rol as PrismaRol } from '@prisma/client';
-import { Usuario, EstadoUsuario } from '../../../domain/entities/usuario.entity';
+import { Usuario, EstadoUsuario } from '../../../../domain/entities/usuario.entity';
 
 type PrismaUsuarioWithRoles = PrismaUsuario & {
   usuarios?: { rol: PrismaRol }[];

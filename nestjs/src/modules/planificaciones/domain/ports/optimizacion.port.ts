@@ -1,6 +1,7 @@
 export interface OptimizacionRequest {
   planificacionId: string;
   jornadaId: string;
+  algoritmo?: string;
   puntosEntrega: {
     id: string;
     latitud: number;

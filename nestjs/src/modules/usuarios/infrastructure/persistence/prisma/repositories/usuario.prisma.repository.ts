@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { UsuarioRepository } from '../../../domain/repositories/usuario.repository';
+import { UsuarioRepository } from '../../../../domain/repositories/usuario.repository';
 import { PrismaService } from '../../../../../../prisma/prisma.service';
-import { Usuario, EstadoUsuario } from '../../../domain/entities/usuario.entity';
+import { Usuario, EstadoUsuario } from '../../../../domain/entities/usuario.entity';
 import { UsuarioMapper } from '../mappers/usuario.mapper';
 import { PaginatedResult } from '../../../../../../shared/application/dto/paginated-result.dto';
 import { PaginationHelper } from '../../../../../../shared/helpers/pagination.helper';

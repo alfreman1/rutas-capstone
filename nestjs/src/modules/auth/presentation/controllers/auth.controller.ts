@@ -1,8 +1,8 @@
 import { Controller, Post, Body, Get, Request } from '@nestjs/common';
-import { AuthService } from '../application/services/auth.service';
-import { Public } from '../../../shared/decorators/auth.decorator';
+import { AuthService } from '../../application/services/auth.service';
+import { Public } from '../../../../shared/decorators/auth.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { LoginDto } from '../application/dto/login.dto';
+import { LoginDto } from '../../application/dto/login.dto';
 
 @ApiTags('Autenticación')
 @Controller('auth')
