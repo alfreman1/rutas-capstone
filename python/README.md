@@ -18,6 +18,7 @@ Este servicio es un microservicio especializado desarrollado en **FastAPI + Pyth
 ## Arquitectura
 
 Sigue principios de **Domain-Driven Design (DDD)** para aislar los algoritmos de infraestructura y endpoints:
+
 - `api/`: Controladores FastAPI (endpoints HTTP).
 - `application/`: Casos de uso (Orquestación del solver).
 - `domain/`: Interfaces, entidades de dominio (Nodos, Matrices).
@@ -40,3 +41,5 @@ pip install -r requirements.txt
 # Correr servidor (ejemplo genérico, ajustar según main.py real)
 uvicorn src.main:app --reload --port 8000
 ```
+
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload

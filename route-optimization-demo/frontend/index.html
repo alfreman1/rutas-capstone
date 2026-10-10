@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Nexo · Optimización de rutas</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand"
+        ><span aria-hidden="true">⌁</span> nexo<span class="brand-detail"
+          >LABORATORIO DE RUTAS</span
+        ></a
+      ><span class="local">● LOCAL / DEMO 08</span>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">DISTRIBUCIÓN URBANA · CIUDAD FICTICIA</p>
+          <h1>Menos recorrido.<br /><span>Las mismas entregas.</span></h1>
+          <p>
+            Asigna pedidos, conecta las paradas y descubre cómo cambia un plan
+            de reparto al respetar la capacidad y el tiempo disponible.
+          </p>
+        </div>
+        <div class="intro-graphic" aria-hidden="true">
+          <svg viewBox="0 0 220 120">
+            <path
+              d="M20 90H65V30H135V90H200"
+              fill="none"
+              stroke="#80a3a0"
+              stroke-width="2"
+              stroke-dasharray="4 5"
+            />
+            <path
+              d="M20 90H65H135H200V30H65"
+              fill="none"
+              stroke="#e0a073"
+              stroke-width="4"
+            />
+            <g fill="#f2e8d8">
+              <circle cx="20" cy="90" r="6" />
+              <circle cx="65" cy="30" r="6" />
+              <circle cx="135" cy="90" r="6" />
+              <circle cx="200" cy="30" r="6" />
+            </g></svg
+          ><span>UN DEPÓSITO. MUCHAS DECISIONES.</span>
+        </div>
+      </section>
+      <nav class="tabs" aria-label="Secciones">
+        <button id="tab-plan" aria-pressed="true" class="active">
+          01 / Planificar</button
+        ><button id="tab-evaluate" aria-pressed="false">02 / Evaluar</button
+        ><button id="tab-learn" aria-pressed="false">
+          03 / Entender el proceso
+        </button>
+      </nav>
+      <p id="status" role="status" aria-live="polite">
+        Preparando el escenario…
+      </p>
+      <section id="panel-plan" aria-label="Planificador">
+        <div class="planning-grid">
+          <aside class="controls">
+            <p class="eyebrow">CONFIGURAR EL REPARTO</p>
+            <h2>Tu jornada</h2>
+            <label for="preset">Escenario</label
+            ><select id="preset"></select>
+            <form id="plan-form">
+              <div class="fields">
+                <div>
+                  <label for="vehicles">Vehículos</label
+                  ><input
+                    id="vehicles"
+                    type="number"
+                    min="1"
+                    max="6"
+                    step="1"
+                    value="3"
+                    required
+                  />
+                </div>
+                <div>
+                  <label for="capacity">Cajas por vehículo</label
+                  ><input
+                    id="capacity"
+                    type="number"
+                    min="1"
+                    max="60"
+                    step="1"
+                    value="24"
+                    required
+                  />
+                </div>
+                <div>
+                  <label for="max-minutes">Turno máx. (min)</label
+                  ><input
+                    id="max-minutes"
+                    type="number"
+                    min="10"
+                    max="480"
+                    step="1"
+                    value="150"
+                    required
+                  />
+                </div>
+                <div>
+                  <label for="speed">Velocidad (km/h)</label
+                  ><input
+                    id="speed"
+                    type="number"
+                    min="10"
+                    max="60"
+                    step="1"
+                    value="30"
+                    required
+                  />
+                </div>
+              </div>
+              <p class="hint">
+                El turno incluye viaje, descarga y regreso. Todos los vehículos
+                parten juntos del depósito.
+              </p>
+              <div id="demand-summary" class="demand-summary"></div>
+              <button id="solve" class="primary" type="submit">
+                Optimizar reparto <span aria-hidden="true">↗</span>
+              </button>
+            </form>
+            <details class="generator">
+              <summary>Crear otros pedidos sintéticos</summary>
+              <label for="order-count">Número de entregas</label
+              ><input
+                id="order-count"
+                type="number"
+                min="3"
+                max="30"
+                value="18"
+              /><label for="seed">Semilla</label
+              ><input
+                id="seed"
+                type="number"
+                min="0"
+                max="9999"
+                value="42"
+              /><button id="generate" class="secondary">Generar pedidos</button>
+              <p class="hint">
+                La misma semilla y cantidad reproducen los mismos pedidos.
+              </p>
+            </details>
+            <p class="hint solver-note">
+              Búsqueda local con OR-Tools · límite de 2 segundos. Sin
+              entrenamiento ni API de mapas.
+            </p>
+          </aside>
+          <div class="map-column">
+            <div class="map-card">
+              <div class="map-heading">
+                <div>
+                  <p class="eyebrow">VISTA DEL REPARTO</p>
+                  <h2>Conecta las paradas</h2>
+                </div>
+                <div class="segmented" aria-label="Plan mostrado">
+                  <button
+                    id="show-optimized"
+                    class="active"
+                    aria-pressed="true"
+                  >
+                    Optimizado</button
+                  ><button id="show-baseline" aria-pressed="false">
+                    Inicial
+                  </button>
+                </div>
+              </div>
+              <div id="map-label" class="map-label">
+                Cuadrícula ficticia · cada cuadra mide 500 m
+              </div>
+              <svg
+                id="route-map"
+                viewBox="0 0 620 510"
+                role="group"
+                aria-label="Mapa esquemático de pedidos y rutas en una ciudad ficticia"
+              ></svg>
+              <div class="map-footer">
+                <span><b class="depot-key">◆</b> Depósito</span
+                ><span>● Entrega</span
+                ><span>Distancia por calles en cuadrícula</span>
+              </div>
+              <p id="map-detail" class="hint">
+                Selecciona una entrega para ver su carga y servicio.
+              </p>
+              <div id="vehicle-filter" class="vehicle-filter"></div>
+            </div>
+            <div id="metrics" class="metrics"></div>
+            <div id="outcome" class="outcome" hidden></div>
+          </div>
+        </div>
+        <section class="itineraries">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">PLAN DETALLADO</p>
+              <h2>Un recorrido por vehículo</h2>
+            </div>
+            <button id="download" class="secondary" disabled>
+              Descargar resultado JSON ↓
+            </button>
+          </div>
+          <p id="plan-explanation" class="hint"></p>
+          <div id="routes" class="route-grid"></div>
+        </section>
+        <details class="orders-panel">
+          <summary>Ver los pedidos y sus datos</summary>
+          <div id="orders-table"></div>
+        </details>
+        <p class="scope">
+          El mapa usa posiciones sintéticas y distancias Manhattan. No
+          representa calles reales, tráfico, sentidos únicos ni indicaciones de
+          navegación. Minimizar kilómetros no garantiza equilibrar la carga o
+          usar la menor cantidad de vehículos.
+        </p>
+      </section>
+      <section id="panel-evaluate" hidden aria-label="Evaluación">
+        <p class="eyebrow">PROBAR EL ALGORITMO</p>
+        <h2 class="large-heading">
+          Primero factible.<br />Después, más corto.
+        </h2>
+        <p class="section-copy">
+          Comparamos la regla inicial y la búsqueda local sobre los mismos
+          pedidos, capacidades, velocidades y turnos. No se utilizan accuracy ni
+          F1: aquí se evalúan planes, no predicciones.
+        </p>
+        <div id="benchmark-summary" class="metrics"></div>
+        <div class="panel">
+          <h3>Escenarios de evaluación</h3>
+          <div id="benchmark-table"></div>
+          <p class="hint">
+            Solo se calcula ahorro cuando ambos planes cumplen todas las
+            restricciones y atienden todas las entregas. Esta tabla es una
+            ejecución guardada; tus búsquedas nuevas pueden variar.
+          </p>
+        </div>
+        <div class="two-panels">
+          <article class="panel">
+            <h3>Una referencia que sí es exacta</h3>
+            <p id="exact-note"></p>
+            <p>
+              Para cinco entregas y un vehículo enumeramos los 120 órdenes
+              posibles. Esta comprobación es pequeña: no certifica los casos
+              grandes.
+            </p>
+          </article>
+          <article class="panel">
+            <h3>«No encontrado» no es «imposible»</h3>
+            <p>
+              Si la carga total supera la capacidad, hay una contradicción
+              demostrable. Si la búsqueda termina sin un plan, puede faltar
+              tiempo o existir una restricción difícil de satisfacer. Los
+              estados se muestran por separado.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section id="panel-learn" hidden aria-label="Explicación">
+        <p class="eyebrow">OPTIMIZACIÓN, PASO A PASO</p>
+        <h2 class="large-heading">
+          Elegir quién entrega.<br />Y en qué orden.
+        </h2>
+        <div class="steps">
+          <article>
+            <span>01</span>
+            <h3>Definir el problema</h3>
+            <p>
+              Un depósito, pedidos indivisibles, vehículos iguales y un único
+              viaje por vehículo. Todos los pedidos deben atenderse una vez.
+            </p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Construir una referencia</h3>
+            <p>
+              La regla inicial recorre los pedidos en su orden de entrada y los
+              agrega al primer vehículo donde caben. No reordena paradas ni
+              revisa decisiones anteriores.
+            </p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Buscar mejoras</h3>
+            <p>
+              OR-Tools cambia asignaciones y secuencias para reducir la
+              distancia total, manteniendo la capacidad y la duración como
+              límites obligatorios.
+            </p>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Comprobar y comparar</h3>
+            <p>
+              Recalculamos visitas, carga, distancia y tiempos sin confiar
+              únicamente en el optimizador. Conservamos el plan inicial si es
+              completo y la búsqueda no lo mejora.
+            </p>
+          </article>
+        </div>
+        <article class="panel">
+          <h3>Qué medimos</h3>
+          <p>
+            <strong>Distancia total:</strong> suma de kilómetros de toda la
+            flota. Es lo que se minimiza.
+          </p>
+          <p>
+            <strong>Fin de la jornada:</strong> regreso del último vehículo si
+            todos salen juntos. Es distinto de sumar las duraciones de todas las
+            rutas.
+          </p>
+          <p>
+            <strong>Cumplimiento:</strong> cada pedido atendido exactamente una
+            vez, capacidades y turnos respetados. Una ruta incompleta no se
+            considera una solución válida.
+          </p>
+          <h3>Qué queda fuera</h3>
+          <p>
+            Ventanas horarias por cliente, recogidas, varios viajes, tráfico
+            real, conductores con descansos y costos económicos. Incorporarlos
+            requiere ampliar el modelo y conseguir datos adecuados.
+          </p>
+        </article>
+      </section>
+    </main>
+    <footer>
+      <span>nexo / optimización de rutas</span
+      ><a href="/docs">Explorar la API ↗</a>
+    </footer>
+  </body>
+</html>

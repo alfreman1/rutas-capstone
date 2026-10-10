@@ -30,7 +30,7 @@ export function useVehiculos() {
   });
 
   return {
-    vehiculos: computed(() => data.value?.items || []),
+    vehiculos: computed(() => data.value?.data || []),
     totalRecords: computed(() => data.value?.meta?.total || 0),
     isFetching,
     queryParams,

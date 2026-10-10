@@ -3,6 +3,8 @@ from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from src.domain.planificacion.distance_provider import DistanceMatrixProvider
 from src.domain.models import Vehiculo, PuntoEntrega, Almacen, Pedido
+import math
+from datetime import datetime, timedelta
 
 class ORToolsCVRPOptimizer:
     def __init__(self, distance_provider: DistanceMatrixProvider, time_limit_seconds: int = 5):
@@ -18,7 +20,7 @@ class ORToolsCVRPOptimizer:
         Resuelve el CVRP usando OR-Tools para un sector/conjunto de puntos.
         """
         if not puntos or not vehiculos:
-            return {"error": "Sin puntos o vehículos para optimizar."}
+            return {"status": "ERROR", "error_detail": "Sin puntos o vehículos para optimizar."}
 
         # 1. Preparar datos
         # Indexar pedidos por punto de entrega (simplificación: 1 pedido por punto)
@@ -26,11 +28,17 @@ class ORToolsCVRPOptimizer:
         for pedido in pedidos:
             demandas_punto[pedido.punto_entrega_id] = {
                 'peso': pedido.peso_total,
-                'volumen': pedido.volumen_total
+                'volumen': pedido.volumen_total,
+                'cajas': sum(getattr(d, 'cantidad_cajas', 0.0) for d in pedido.detalles)
             }
             
         # Nodos: Índice 0 es el almacén. Índices 1..N son los puntos.
         nodes = [almacen.id] + [p.id for p in puntos]
+        # Mapa para recuperar entidad real por ID
+        nodes_map = {almacen.id: almacen}
+        for p in puntos:
+            nodes_map[p.id] = p
+
         num_vehicles = len(vehiculos)
         depot_index = 0
         
@@ -87,55 +95,106 @@ class ORToolsCVRPOptimizer:
         
         # 6. Formatear solución
         if solution:
-            return self._format_solution(manager, routing, solution, nodes, vehiculos)
+            return self._format_solution(manager, routing, solution, nodes, nodes_map, demandas_punto, vehiculos)
         else:
-            return {"status": "NO_SOLUTION_FOUND"}
+            return {"status": "ERROR", "error_detail": "NO_SOLUTION_FOUND"}
             
-    def _format_solution(self, manager, routing, solution, nodes, vehiculos) -> Dict[str, Any]:
-        """Extrae la solución en un formato amigable."""
-        rutas = []
-        total_distance = 0
-        total_load = 0
+    def _format_solution(self, manager, routing, solution, nodes, nodes_map, demandas_punto, vehiculos) -> Dict[str, Any]:
+        """Extrae la solución en el formato DTO acordado."""
+        routes = []
+        total_distance_km = 0.0
+        total_time_min = 0
+        vehicles_used = 0
+        
+        # Tiempo base para estimaciones simples (08:00 AM)
+        base_time = datetime.strptime("08:00", "%H:%M")
         
         for vehicle_id in range(routing.vehicles()):
             index = routing.Start(vehicle_id)
-            ruta_vehiculo = {
-                "vehiculo_id": vehiculos[vehicle_id].id,
-                "paradas": [],
-                "distancia_metros": 0,
-                "carga": 0
-            }
             
-            route_distance = 0
-            route_load = 0
+            route_distance_m = 0
+            route_load_weight = 0
+            route_load_volume = 0
+            route_load_boxes = 0
+            stops = []
             
-            # Recorrer ruta
+            # Verificar si el vehiculo fue usado (si va del deposito a otro lado)
+            if routing.IsEnd(solution.Value(routing.NextVar(index))):
+                continue
+            
+            vehicles_used += 1
+            order = 1
+            current_time = base_time
+
+            # Recorrer ruta (Omitimos el deposito inicial en los stops, o lo marcamos especial si queremos)
             while not routing.IsEnd(index):
                 node_index = manager.IndexToNode(index)
-                ruta_vehiculo["paradas"].append(nodes[node_index])
+                node_id = nodes[node_index]
+                node_entity = nodes_map[node_id]
+                
+                # Si no es el deposito, agregamos como parada
+                if node_index != 0:
+                    d = demandas_punto.get(node_id, {'peso': 0.0, 'volumen': 0.0, 'cajas': 0.0})
+                    route_load_weight += d['peso']
+                    route_load_volume += d['volumen']
+                    route_load_boxes += d['cajas']
+                    
+                    service_time = getattr(node_entity, 'tiempo_servicio', 15.0)
+                    arrival_str = current_time.strftime("%H:%M")
+                    current_time += timedelta(minutes=int(service_time))
+                    departure_str = current_time.strftime("%H:%M")
+                    
+                    stops.append({
+                        "pointId": node_id,
+                        "latitud": float(node_entity.latitud),
+                        "longitud": float(node_entity.longitud),
+                        "order": order,
+                        "estimatedArrival": arrival_str,
+                        "estimatedDeparture": departure_str,
+                        "serviceTimeMin": int(service_time)
+                    })
+                    order += 1
                 
                 previous_index = index
                 index = solution.Value(routing.NextVar(index))
-                route_distance += routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
                 
-                # Para carga
-                capacity_dimension = routing.GetDimensionOrDie("Capacity")
-                route_load = solution.Min(capacity_dimension.CumulVar(index))
+                # Distancia hacia el siguiente nodo
+                arc_distance_m = routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
+                route_distance_m += arc_distance_m
                 
-            # Agregar el depósito al final
-            node_index = manager.IndexToNode(index)
-            ruta_vehiculo["paradas"].append(nodes[node_index])
+                # Simular tiempo de viaje (Asumiendo 40 km/h -> 40000 m / 60 min -> 666 m/min)
+                travel_time_min = arc_distance_m / 666.0 if arc_distance_m > 0 else 0
+                current_time += timedelta(minutes=int(travel_time_min))
+                
+            # Agregar el viaje de vuelta al depósito (suma a la distancia y tiempo)
+            distance_km = round(route_distance_m / 1000.0, 2)
+            time_estimated_min = int((current_time - base_time).total_seconds() / 60)
             
-            ruta_vehiculo["distancia_metros"] = route_distance
-            ruta_vehiculo["carga"] = route_load
+            routes.append({
+                "vehicleId": vehiculos[vehicle_id].id,
+                "distanceKm": distance_km,
+                "timeEstimatedMin": time_estimated_min,
+                "load": {
+                    "boxes": int(route_load_boxes),
+                    "weight": round(route_load_weight, 2),
+                    "volume": round(route_load_volume, 2)
+                },
+                "stops": stops
+            })
             
-            rutas.append(ruta_vehiculo)
-            total_distance += route_distance
-            total_load += route_load
+            total_distance_km += distance_km
+            total_time_min += time_estimated_min
             
         return {
             "status": "SUCCESS",
-            "distancia_total_metros": total_distance,
-            "carga_total": total_load,
-            "rutas": rutas
+            "algorithm": {
+                "clustering": "NONE",
+                "routing": "OR_TOOLS_CVRP"
+            },
+            "metrics": {
+                "distanceTotalKm": round(total_distance_km, 2),
+                "timeTotalMin": total_time_min,
+                "vehiclesUsed": vehicles_used
+            },
+            "routes": routes
         }

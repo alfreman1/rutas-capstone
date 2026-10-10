@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, TypeVar, Generic, Any
 from datetime import datetime
+
+T = TypeVar("T")
+
+class StandardResponse(BaseModel, Generic[T]):
+    success: bool = True
+    data: T
+    meta: Optional[dict] = None
 
 class VentanaHoraria(BaseModel):
     inicio: datetime
@@ -30,6 +37,7 @@ class Restricciones(BaseModel):
 class OptimizacionRequest(BaseModel):
     planificacionId: str
     jornadaId: str
+    algoritmo: Optional[str] = "KMEANS_ORTOOLS"
     puntosEntrega: List[PuntoEntrega]
     vehiculos: List[Vehiculo]
     restricciones: Restricciones

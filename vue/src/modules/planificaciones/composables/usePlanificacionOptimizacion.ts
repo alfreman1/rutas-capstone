@@ -15,9 +15,9 @@ export function usePlanificacionOptimizacion(planificacionId: string) {
     queryKey: ['planificacion', planificacionId, 'estado-optimizacion'],
     queryFn: () => planificacionService.consultarEstado(planificacionId),
     refetchInterval: (query) => {
-      // Polling cada 3 segundos si el estado es PROCESANDO o PENDIENTE y hemos habilitado el polling
+      // Polling cada 3 segundos si el estado es PROCESANDO, PENDIENTE o GENERANDO y hemos habilitado el polling
       const estado = query.state?.data?.estado;
-      if (isPollingEnabled.value && (estado === 'PROCESANDO' || estado === 'PENDIENTE')) {
+      if (isPollingEnabled.value && (estado === 'PROCESANDO' || estado === 'PENDIENTE' || estado === 'GENERANDO')) {
         return 3000; 
       }
       return false; // Detener polling
@@ -27,7 +27,7 @@ export function usePlanificacionOptimizacion(planificacionId: string) {
 
   // Mutación para disparar el cálculo
   const solicitarMutacion = useMutation({
-    mutationFn: (vehiculosIds: string[]) => planificacionService.solicitarOptimizacion(planificacionId, vehiculosIds),
+    mutationFn: (payload: {vehiculosIds: string[], algoritmo?: string}) => planificacionService.solicitarOptimizacion(planificacionId, payload.vehiculosIds, payload.algoritmo),
     onSuccess: () => {
       toast.add({ severity: 'info', summary: 'Optimizador iniciado', detail: 'La Inteligencia Artificial está calculando las rutas.', life: 5000 });
       isPollingEnabled.value = true; // Empezamos a hacer polling automático
@@ -35,7 +35,8 @@ export function usePlanificacionOptimizacion(planificacionId: string) {
       queryClient.invalidateQueries({ queryKey: ['planificacion', planificacionId] });
     },
     onError: (error: any) => {
-      toast.add({ severity: 'error', summary: 'Error', detail: error?.response?.data?.message || 'No se pudo iniciar la optimización', life: 5000 });
+      // The toast is also handled globally, but we keep this just in case, or we rely on the global one.
+      isPollingEnabled.value = false;
     }
   });
 
@@ -44,6 +45,8 @@ export function usePlanificacionOptimizacion(planificacionId: string) {
     isPolling: estadoQuery.isFetching,
     solicitarOptimizacion: solicitarMutacion.mutate,
     isSolicitando: solicitarMutacion.isPending,
+    isErrorSolicitud: solicitarMutacion.isError,
     isPollingEnabled,
+    consultarEstadoManual: estadoQuery.refetch,
   };
 }

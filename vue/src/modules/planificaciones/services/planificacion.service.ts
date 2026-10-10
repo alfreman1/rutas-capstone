@@ -14,6 +14,10 @@ export interface EstadoOptimizacionResponse {
 }
 
 export const planificacionService = {
+  async listar(params: any = {}) {
+    return apiClient.get('/planificaciones', { params });
+  },
+
   // Mock endpoint to simulate fetching a Planificacion Details
   async obtenerDetalle(id: string) {
     // In a real scenario, this gets data from GET /planificaciones/:id
@@ -28,8 +32,8 @@ export const planificacionService = {
     };
   },
 
-  async solicitarOptimizacion(id: string, vehiculosIds: string[]): Promise<OptimizacionResponse> {
-    return apiClient.post(`/planificaciones/${id}/optimizar`, { vehiculosIds });
+  async solicitarOptimizacion(id: string, vehiculosIds: string[], algoritmo?: string): Promise<OptimizacionResponse> {
+    return apiClient.post(`/planificaciones/${id}/optimizar`, { vehiculosIds, algoritmo });
   },
 
   async consultarEstado(id: string): Promise<EstadoOptimizacionResponse> {

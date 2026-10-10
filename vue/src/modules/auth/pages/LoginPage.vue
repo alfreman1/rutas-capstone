@@ -44,15 +44,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
-// Import useAuth mutation and auth service logic here
+import { authService } from '../services/auth.service';
 
 const router = useRouter();
+const route = useRoute();
 const email = ref('admin@logistica.local');
-const password = ref('Admin123!');
+const password = ref('admin1234');
 const rememberMe = ref(false);
 const isLoading = ref(false);
 const error = ref('');
@@ -61,14 +62,19 @@ const handleLogin = async () => {
   try {
     isLoading.value = true;
     error.value = '';
-    // Simulating API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const res: any = await authService.login(email.value, password.value);
     
-    // Simulate setting token
-    localStorage.setItem('token', 'fake-jwt-token');
-    router.push('/dashboard');
+    if (res.success && res.data?.accessToken) {
+      localStorage.setItem('token', res.data.accessToken);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      
+      const redirect = route.query.redirect as string;
+      router.push(redirect || '/dashboard');
+    } else {
+      throw new Error('Respuesta inválida');
+    }
   } catch (e: any) {
-    error.value = 'Credenciales inválidas';
+    error.value = e?.response?.data?.error?.message || 'Credenciales inválidas';
   } finally {
     isLoading.value = false;
   }

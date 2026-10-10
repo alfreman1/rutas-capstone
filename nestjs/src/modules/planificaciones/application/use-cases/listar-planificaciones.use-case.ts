@@ -21,7 +21,7 @@ export class ListarPlanificacionesUseCase {
       where.estado = estado;
     }
     if (search) {
-      where.id = { contains: search, mode: 'insensitive' };
+      where.codigo = { contains: search, mode: 'insensitive' };
     }
 
     const [items, total] = await Promise.all([

@@ -27,13 +27,27 @@ enum EstadoJornada {
   CANCELADA
 }
 
+enum TipoPlanificacion {
+  MANUAL
+  OPTIMIZADA
+  HIBRIDA
+}
+
+enum OrigenRuta {
+  IA
+  MANUAL
+  MODIFICADA
+}
+
 enum EstadoPlanificacion {
   BORRADOR
-  PROCESANDO
+  GENERANDO
   GENERADA
   APROBADA
   EN_EJECUCION
   FINALIZADA
+  RECHAZADA
+  REPLANIFICACION
   ERROR
 }
 
@@ -392,19 +406,28 @@ model Planificacion {
   jornadaId  String
   vehiculoId String?
 
+  codigo String?           @unique
+  tipo   TipoPlanificacion @default(MANUAL)
+
   fechaGeneracion DateTime @default(now())
 
   estado EstadoPlanificacion @default(BORRADOR)
 
   estrategiaSectorizacion TipoEstrategiaSectorizacion?
 
+  optimizacionSeleccionadaId String?   @unique
+  creadoPorId                String?
+  aprobadoPorId              String?
+  fechaAprobacion            DateTime?
+
   jornada  Jornada   @relation(fields: [jornadaId], references: [id])
   vehiculo Vehiculo? @relation(fields: [vehiculoId], references: [id])
 
-  sectores       Sector[]
-  cargas         Carga[]
-  rutas          Ruta[]
-  optimizaciones Optimizacion[]
+  sectores                 Sector[]
+  cargas                   Carga[]
+  rutas                    Ruta[]
+  optimizaciones           Optimizacion[] @relation("PlanificacionOptimizaciones")
+  optimizacionSeleccionada Optimizacion?  @relation("OptimizacionSeleccionada", fields: [optimizacionSeleccionadaId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -470,19 +493,28 @@ model Carga {
 model Ruta {
   id              String  @id @default(uuid())
   planificacionId String
+  optimizacionId  String?
   cargaId         String?
   vehiculoId      String
 
   codigo String
+  numero Int?
+
+  origen OrigenRuta @default(IA)
 
   ordenGenerado Int?
 
   distanciaKm   Decimal? @db.Decimal(12, 3)
   tiempoMinutos Int?
 
+  cargaCajas   Int?
+  cargaPeso    Decimal? @db.Decimal(12, 3)
+  cargaVolumen Decimal? @db.Decimal(12, 6)
+
   estado EstadoRuta @default(PENDIENTE)
 
   planificacion Planificacion @relation(fields: [planificacionId], references: [id])
+  optimizacion  Optimizacion? @relation(fields: [optimizacionId], references: [id])
   carga         Carga?        @relation(fields: [cargaId], references: [id])
   vehiculo      Vehiculo      @relation(fields: [vehiculoId], references: [id])
 
@@ -506,6 +538,9 @@ model Entrega {
 
   orden Int
 
+  horaEstimadaLlegada String?
+  horaEstimadaSalida  String?
+
   distanciaKm           Decimal? @db.Decimal(12, 3)
   tiempoEstimadoMinutos Int?
 
@@ -526,10 +561,12 @@ model Optimizacion {
   id              String @id @default(uuid())
   planificacionId String
 
+  version   Int    @default(1)
   algoritmo String
 
-  parametros Json?
-  resultado  Json?
+  parametros   Json?
+  resultado    Json?
+  resultadoRaw Json?
 
   distanciaInicialKm Decimal? @db.Decimal(12, 3)
   distanciaFinalKm   Decimal? @db.Decimal(12, 3)
@@ -537,14 +574,20 @@ model Optimizacion {
   tiempoInicialMinutos Int?
   tiempoFinalMinutos   Int?
 
+  vehiculosUtilizados Int?
+
   mejoraDistanciaPorcentaje Decimal? @db.Decimal(8, 3)
 
   estado EstadoOptimizacion @default(PENDIENTE)
 
-  iniciadoAt   DateTime?
-  finalizadoAt DateTime?
+  iniciadoAt        DateTime?
+  finalizadoAt      DateTime?
+  tiempoEjecucionMs Int?
 
-  planificacion Planificacion @relation(fields: [planificacionId], references: [id])
+  planificacion             Planificacion  @relation("PlanificacionOptimizaciones", fields: [planificacionId], references: [id])
+  planificacionSeleccionada Planificacion? @relation("OptimizacionSeleccionada")
+
+  rutasGeneradas Ruta[]
 
   createdAt DateTime @default(now())
 

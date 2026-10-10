@@ -26,7 +26,11 @@ export class ConsultarEstadoOptimizacionUseCase {
 
     // Si ya terminó o falló en base de datos, retornamos inmediatamente sin ir a Python
     if (optimizacion.estado === 'COMPLETADA' || optimizacion.estado === 'ERROR') {
-      return { estado: optimizacion.estado, resultado: optimizacion.resultado };
+      return { 
+        estado: optimizacion.estado, 
+        resultado: optimizacion.estado === 'COMPLETADA' ? optimizacion.resultado : null,
+        error: optimizacion.estado === 'ERROR' ? (optimizacion.resultado as any)?.error : null
+      };
     }
 
     const payloadRaw = optimizacion.resultado as any;
@@ -37,7 +41,32 @@ export class ConsultarEstadoOptimizacionUseCase {
     }
 
     // 2. Consultar el motor de IA vía el adaptador
-    const iaResponse = await this.optimizacionPort.consultarEstado(jobId);
+    let iaResponse: any;
+    try {
+      iaResponse = await this.optimizacionPort.consultarEstado(jobId);
+    } catch (error: any) {
+      this.logger.error(`Error de red/comunicación al consultar el Job [${jobId}]`, error.message);
+      
+      // Registrar el error de polling en DB
+      await this.prisma.optimizacion.update({
+        where: { id: optimizacion.id },
+        data: {
+          estado: 'ERROR',
+          finalizadoAt: new Date(),
+          resultado: { jobId, error: error.message || 'Error de conexión con la IA al consultar estado' }
+        }
+      });
+
+      await this.prisma.planificacion.update({
+        where: { id: planificacionId },
+        data: { estado: 'ERROR' }
+      });
+
+      return {
+        estado: 'ERROR',
+        error: error.message || 'Error de conexión con la IA'
+      };
+    }
 
     // 3. Si hubo un cambio de estado en la IA, actualizar PostgreSQL (NestJS)
     if (iaResponse.status === 'COMPLETADA') {
@@ -62,7 +91,7 @@ export class ConsultarEstadoOptimizacionUseCase {
         data: { estado: 'GENERADA' }
       });
       
-    } else if (iaResponse.status === 'ERROR') {
+    } else if (iaResponse.status === 'ERROR' || iaResponse.status === 'FAILED') {
       this.logger.error(`El Job [${jobId}] falló en la IA.`);
       
       await this.prisma.optimizacion.update({
@@ -70,7 +99,7 @@ export class ConsultarEstadoOptimizacionUseCase {
         data: {
           estado: 'ERROR',
           finalizadoAt: new Date(),
-          resultado: { jobId, error: iaResponse.error_detail }
+          resultado: { jobId, error: iaResponse.error_detail || iaResponse.error || 'Fallo interno del algoritmo IA' }
         }
       });
 
@@ -81,9 +110,11 @@ export class ConsultarEstadoOptimizacionUseCase {
     }
 
     return {
-      estado: iaResponse.status,
+      estado: iaResponse.status === 'FAILED' ? 'ERROR' : iaResponse.status,
       resultado: iaResponse.status === 'COMPLETADA' ? iaResponse.result : null,
-      error: iaResponse.status === 'ERROR' ? iaResponse.error_detail : null
+      error: (iaResponse.status === 'ERROR' || iaResponse.status === 'FAILED') 
+             ? (iaResponse.error_detail || iaResponse.error || 'Error interno') 
+             : null
     };
   }
 }

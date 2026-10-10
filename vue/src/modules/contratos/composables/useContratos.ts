@@ -15,7 +15,7 @@ export function useContratos() {
 
   // Query de contratos
   const contratosQuery = useQuery({
-    queryKey: ['contratos', queryParams],
+    queryKey: computed(() => ['contratos', queryParams.value.page, queryParams.value.limit, queryParams.value.search, queryParams.value.estado]),
     queryFn: () => contratoService.listar(queryParams.value),
   });
 
@@ -32,7 +32,7 @@ export function useContratos() {
   });
 
   return {
-    contratos: computed(() => contratosQuery.data.value?.items || []),
+    contratos: computed(() => contratosQuery.data.value?.data || []),
     totalRecords: computed(() => contratosQuery.data.value?.meta?.total || 0),
     isFetching: contratosQuery.isFetching,
     queryParams,
@@ -63,7 +63,7 @@ export function usePuntosEntrega(contratoId: string) {
   });
 
   return {
-    puntos: computed(() => puntosQuery.data.value || []),
+    puntos: computed(() => puntosQuery.data.value?.data || []),
     isFetching: puntosQuery.isFetching,
     agregarPunto: crearPuntoMut.mutateAsync,
     isCreando: crearPuntoMut.isPending,

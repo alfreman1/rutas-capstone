@@ -19,8 +19,8 @@
         <i class="pi pi-search" />
         <InputText v-model="search" placeholder="Buscar por placa o código..." class="w-full" @keyup.enter="aplicarFiltros" />
       </div>
-      <Select v-model="tipoFilter" :options="tipos" placeholder="Tipo" class="w-48" @change="aplicarFiltros" />
-      <Select v-model="estadoFilter" :options="estados" placeholder="Estado" class="w-48" @change="aplicarFiltros" />
+      <Dropdown v-model="tipoFilter" :options="tipos" placeholder="Tipo" class="w-48" @change="aplicarFiltros" />
+      <Dropdown v-model="estadoFilter" :options="estados" placeholder="Estado" class="w-48" @change="aplicarFiltros" />
       <Button icon="pi pi-times" severity="secondary" text @click="limpiarFiltros" v-tooltip="'Limpiar filtros'" />
     </div>
 
@@ -90,7 +90,7 @@
 
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de Vehículo</label>
-          <Select v-model="form.tipo" :options="tipos" class="w-full" />
+          <Dropdown v-model="form.tipo" :options="tipos" class="w-full" />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -117,7 +117,7 @@ import { ref } from 'vue';
 import { useVehiculos } from '../composables/useVehiculos';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Select from 'primevue/select';
+import Dropdown from 'primevue/dropdown';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';

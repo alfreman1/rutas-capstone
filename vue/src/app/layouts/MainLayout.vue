@@ -18,6 +18,9 @@
         <div class="px-6 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-4">Planificación</div>
         <router-link to="/jornadas" class="flex items-center px-6 py-2 text-slate-300 hover:bg-slate-800 hover:text-white" active-class="text-blue-400">Jornadas</router-link>
         <router-link to="/planificaciones" class="flex items-center px-6 py-2 text-slate-300 hover:bg-slate-800 hover:text-white" active-class="text-blue-400">Planificaciones</router-link>
+        <router-link to="/optimizacion" class="flex items-center px-6 py-2 text-slate-300 hover:bg-slate-800 hover:text-white" active-class="text-blue-400">
+          <i class="pi pi-bolt text-yellow-400 mr-2"></i> Playground IA
+        </router-link>
 
         <div class="px-6 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-4">Operación</div>
         <router-link to="/rutas" class="flex items-center px-6 py-2 text-slate-300 hover:bg-slate-800 hover:text-white" active-class="text-blue-400">Rutas</router-link>

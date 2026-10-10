@@ -12,7 +12,7 @@
     </div>
 
     <!-- Optimization Dashboard -->
-    <div v-if="estadoLocal === 'BORRADOR' || estadoLocal === 'ERROR'" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+    <div v-if="estadoLocal !== 'PROCESANDO'" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
       <h2 class="text-lg font-semibold text-slate-800 mb-4">Configurar Optimización de Rutas</h2>
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -21,7 +21,7 @@
             <label class="block text-sm font-medium text-slate-700 mb-1">Vehículos Disponibles</label>
             <MultiSelect 
               v-model="vehiculosSeleccionados" 
-              :options="vehiculosMock" 
+              :options="vehiculos" 
               optionLabel="placa" 
               optionValue="id" 
               placeholder="Seleccionar vehículos" 
@@ -29,8 +29,14 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Algoritmo</label>
-            <Select v-model="algoritmo" :options="['VRP (Google OR-Tools)', 'DBSCAN + TSP']" class="w-full" />
+            <label class="block text-sm font-medium text-slate-700 mb-1">Estrategia Algorítmica</label>
+            <Dropdown 
+              v-model="algoritmoSeleccionado" 
+              :options="algoritmosDisponibles" 
+              optionLabel="label"
+              optionValue="value"
+              class="w-full" 
+            />
           </div>
         </div>
         
@@ -48,7 +54,7 @@
     </div>
 
     <!-- Processing State -->
-    <div v-else-if="estadoLocal === 'PROCESANDO'" class="bg-indigo-50 p-8 rounded-xl border border-indigo-100 flex flex-col items-center justify-center text-center space-y-4">
+    <div v-else-if="estadoLocal === 'GENERANDO' || estadoLocal === 'PROCESANDO'" class="bg-indigo-50 p-8 rounded-xl border border-indigo-100 flex flex-col items-center justify-center text-center space-y-4">
       <div class="w-16 h-16 relative">
         <div class="absolute inset-0 rounded-full border-4 border-indigo-200"></div>
         <div class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
@@ -59,6 +65,19 @@
         <p class="text-indigo-700 mt-2 max-w-md">El motor matemático está evaluando las combinaciones posibles respetando las ventanas horarias y capacidades.</p>
       </div>
       <ProgressBar mode="indeterminate" style="height: 6px; width: 300px" class="mt-4"></ProgressBar>
+      
+      <div class="mt-6 pt-4 border-t border-indigo-100 flex flex-col items-center">
+        <p class="text-xs text-indigo-500 mb-2">¿La carga demora demasiado?</p>
+        <Button 
+          icon="pi pi-refresh" 
+          label="Consultar estado manualmente" 
+          size="small" 
+          outlined 
+          severity="info" 
+          @click="consultarEstadoManual()" 
+          :loading="isPolling"
+        />
+      </div>
     </div>
 
     <!-- Results State -->
@@ -87,66 +106,115 @@
         </div>
       </div>
 
-      <!-- Map & Routes View -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- List -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="p-4 border-b border-slate-100 font-semibold flex justify-between items-center">
-            <span>Rutas Generadas</span>
-            <Tag :value="metricas.rutas.length.toString()" severity="info" rounded />
-          </div>
-          <div class="divide-y divide-slate-100 overflow-y-auto max-h-[500px]">
-            <div v-for="(ruta, index) in metricas.rutas" :key="index" class="p-4 hover:bg-slate-50 cursor-pointer transition-colors">
-              <div class="flex justify-between items-start mb-2">
-                <span class="font-bold text-slate-800">Ruta {{ index + 1 }}</span>
-                <span class="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-600">{{ ruta.distanciaKm }} km</span>
-              </div>
-              <div class="text-sm text-slate-500 mb-2">
-                <i class="pi pi-truck mr-1"></i> Vehículo: {{ ruta.vehiculoId }}
-              </div>
-              <div class="flex items-center text-xs text-slate-400">
-                <i class="pi pi-map-marker mr-1"></i> {{ ruta.entregas.length }} paradas
-              </div>
-            </div>
+      <!-- Map & Routes View (Mockup matched) -->
+      <div class="mt-8">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-slate-800 flex items-center">
+            <span class="mr-2">Mapa de rutas</span>
+          </h2>
+          <div class="w-64">
+             <Dropdown v-model="selectedRouteIndex" :options="routeOptions" optionLabel="label" optionValue="value" placeholder="Todas las rutas" class="w-full" />
           </div>
         </div>
 
-        <!-- Map Visualizer -->
-        <div class="lg:col-span-2 rounded-xl border border-slate-200 min-h-[500px] relative overflow-hidden">
-          <BaseMap 
-            :options="{ center: { lat: -20.6, lng: -64.9 }, zoom: 11 }" 
-            class="absolute inset-0"
-          >
-            <!-- Centro de Distribución (Almacén) -->
-            <MapMarker :position="{ lat: -20.6, lng: -64.9 }" title="Almacén Central">
-              <div class="p-2 text-center">
-                <i class="pi pi-building text-blue-600 text-xl mb-1 block"></i>
-                <span class="font-bold">Culpina SRL</span>
-              </div>
-            </MapMarker>
-
-            <!-- Rutas Generadas (Trazado Vectorial) -->
-            <template v-for="(ruta, index) in metricas.rutas" :key="`route-${index}`">
-              <MapRoute 
-                :path="getRutaCoordenadas(ruta)" 
-                :color="getRouteColor(index)" 
-                :weight="4" 
-              />
-              
-              <!-- Puntos de Entrega de cada ruta -->
-              <MapMarker 
-                v-for="(entrega, i) in ruta.entregas" 
-                :key="`marker-${index}-${i}`"
-                :position="getCoordenadasMock(entrega.puntoEntregaId)"
-                :title="`Punto: ${entrega.puntoEntregaId}`"
-              >
-                <div class="text-xs">
-                  <span class="block font-bold">Orden: {{ entrega.orden }}</span>
-                  <span class="block text-slate-500">Ruta: {{ index + 1 }}</span>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Map Visualizer (Left side, takes 2 cols) -->
+          <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 min-h-[500px] relative overflow-hidden">
+            <BaseMap 
+              :options="{ center: { lat: -20.6, lng: -64.9 }, zoom: 11 }" 
+              class="absolute inset-0"
+            >
+              <!-- Centro de Distribución (Almacén) -->
+              <MapMarker :position="{ lat: -20.6, lng: -64.9 }" title="Almacén Central">
+                <div class="p-2 text-center">
+                  <i class="pi pi-building text-blue-600 text-xl mb-1 block"></i>
+                  <span class="font-bold">Culpina SRL</span>
                 </div>
               </MapMarker>
-            </template>
-          </BaseMap>
+
+              <template v-for="(ruta, index) in metricas.rutas" :key="`route-${index}`">
+                <MapRoute 
+                  v-if="selectedRouteIndex === -1 || selectedRouteIndex === index"
+                  :path="getRutaCoordenadas(ruta)" 
+                  :color="getRouteColor(index)" 
+                  :weight="4" 
+                  :mode="mapRouteMode"
+                />
+                
+                <MapMarker 
+                  v-if="selectedRouteIndex === -1 || selectedRouteIndex === index"
+                  v-for="(entrega, i) in ruta.entregas" 
+                  :key="`marker-${index}-${i}`"
+                  :position="{ lat: entrega.latitud, lng: entrega.longitud }"
+                  :title="`Punto: ${entrega.puntoEntregaId}`"
+                >
+                  <div class="text-xs">
+                    <span class="block font-bold">Orden: {{ entrega.orden }}</span>
+                    <span class="block text-slate-500">Ruta: {{ index + 1 }}</span>
+                  </div>
+                </MapMarker>
+              </template>
+            </BaseMap>
+          </div>
+
+          <!-- Details Sidebar (Right side, 1 col) -->
+          <div class="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full max-h-[600px]">
+            <div class="p-4 border-b border-slate-100 font-bold text-slate-800 text-lg">
+              Detalle de rutas
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-0" v-if="metricas.rutas.length > 0">
+              <div v-for="(ruta, index) in metricas.rutas" :key="`detail-${index}`" 
+                   v-show="selectedRouteIndex === -1 || selectedRouteIndex === index"
+                   class="p-5 border-b border-slate-100 last:border-0"
+              >
+                <!-- Badge Vehículo -->
+                <div class="mb-4">
+                  <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold shadow-sm">
+                    {{ ruta.vehiculoId || `VEH-00${index + 1}` }}
+                  </span>
+                </div>
+                
+                <!-- Métricas de ruta -->
+                <div class="space-y-3 mb-6 text-sm">
+                  <div class="flex justify-between items-center text-slate-600">
+                    <span class="flex items-center"><i class="pi pi-map-marker mr-2 text-slate-400"></i> Distancia</span>
+                    <span class="font-bold text-slate-800">{{ ruta.distanciaKm || '18.35' }} km</span>
+                  </div>
+                  <div class="flex justify-between items-center text-slate-600">
+                    <span class="flex items-center"><i class="pi pi-box mr-2 text-slate-400"></i> Carga</span>
+                    <span class="font-bold text-slate-800">{{ ruta.carga || '1,066' }} kg</span>
+                  </div>
+                </div>
+
+                <!-- Lista de paradas -->
+                <div>
+                  <h3 class="font-bold text-slate-800 mb-3">Paradas</h3>
+                  <div class="space-y-3">
+                    <div class="flex items-start text-sm">
+                      <span class="w-6 font-medium text-slate-400 text-right mr-3">1.</span>
+                      <span class="text-slate-700">Almacén (inicio)</span>
+                    </div>
+                    
+                    <div v-for="(entrega, i) in ruta.entregas" :key="`entrega-${i}`" class="flex items-start text-sm">
+                      <span class="w-6 font-medium text-slate-400 text-right mr-3">{{ i + 2 }}.</span>
+                      <span class="text-slate-700">{{ entrega.puntoEntregaId || `PNT-0${i + 1}9` }}</span>
+                    </div>
+                    
+                    <div class="flex items-start text-sm text-slate-400">
+                      <span class="w-6 font-medium text-right mr-3">...</span>
+                      <span>...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div v-else class="p-8 text-center text-slate-500">
+              <i class="pi pi-map mb-2 text-2xl"></i>
+              <p>No hay rutas generadas aún.</p>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -155,14 +223,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { usePlanificacionOptimizacion } from '../composables/usePlanificacionOptimizacion';
+import { useVehiculos } from '../../vehiculos/composables/useVehiculos';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import MultiSelect from 'primevue/multiselect';
-import Select from 'primevue/select';
+import Dropdown from 'primevue/dropdown';
 import ProgressBar from 'primevue/progressbar';
+import SelectButton from 'primevue/selectbutton';
 import BaseMap from '@/components/map/BaseMap.vue';
 import MapMarker from '@/components/map/MapMarker.vue';
 import MapRoute from '@/components/map/MapRoute.vue';
@@ -171,18 +241,33 @@ const route = useRoute();
 const planificacionId = route.params.id as string;
 
 // Composable de TanStack Query
-const { estadoOptimizacion, solicitarOptimizacion, isSolicitando, isPollingEnabled } = usePlanificacionOptimizacion(planificacionId);
+const { 
+  estadoOptimizacion, 
+  solicitarOptimizacion, 
+  isSolicitando, 
+  isErrorSolicitud, 
+  isPollingEnabled,
+  isPolling,
+  consultarEstadoManual
+} = usePlanificacionOptimizacion(planificacionId);
 
 // Estado UI Local
-const estadoLocal = ref('BORRADOR'); // BORRADOR | PROCESANDO | COMPLETADA | ERROR
-const algoritmo = ref('VRP (Google OR-Tools)');
-const vehiculosSeleccionados = ref(['v1', 'v2']); // Mock seleccionado por defecto
+const estadoLocal = ref('BORRADOR'); // BORRADOR | GENERANDO | PROCESANDO | COMPLETADA | ERROR
+const algoritmoSeleccionado = ref('KMEANS_ORTOOLS');
+const algoritmosDisponibles = [
+  { label: 'K-Means + OR-Tools CVRP', value: 'KMEANS_ORTOOLS' },
+  { label: 'DBSCAN + OR-Tools CVRP', value: 'DBSCAN_ORTOOLS' },
+  { label: 'Puro OR-Tools (Global)', value: 'PURE_ORTOOLS' }
+];
+// Vehiculos Reales
+const { vehiculos } = useVehiculos();
+const vehiculosSeleccionados = ref<string[]>([]);
 
-// Mock data
-const vehiculosMock = [
-  { id: 'v1', placa: 'ABC-123 (Furgón 3.5T)' },
-  { id: 'v2', placa: 'XYZ-987 (Camión 5T)' },
-  { id: 'v3', placa: 'DEF-456 (Furgón 3.5T)' }
+// Opciones de Ruteo en el Mapa
+const mapRouteMode = ref<'straight' | 'osrm'>('straight');
+const routeModeOptions = [
+  { label: 'Líneas', value: 'straight' },
+  { label: 'Calles (OSRM)', value: 'osrm' }
 ];
 
 const metricas = ref({
@@ -192,13 +277,25 @@ const metricas = ref({
   rutas: [] as any[]
 });
 
+const selectedRouteIndex = ref(-1);
+
+const routeOptions = computed(() => {
+  const options = [{ label: 'Todas las rutas', value: -1 }];
+  if (metricas.value.rutas) {
+    metricas.value.rutas.forEach((r, i) => {
+      options.push({ label: `Ruta ${r.vehiculoId || i + 1}`, value: i });
+    });
+  }
+  return options;
+});
+
 // Vigilar el estado asíncrono
 watch(estadoOptimizacion, (nuevoEstado) => {
   if (nuevoEstado) {
     estadoLocal.value = nuevoEstado.estado;
     
-    if (nuevoEstado.estado === 'COMPLETADA' && nuevoEstado.resultado) {
-      // Detener polling (aunque usePlanificacion ya lo detiene si no es PROCESANDO)
+    if ((nuevoEstado.estado === 'COMPLETADA' || nuevoEstado.estado === 'GENERADA') && nuevoEstado.resultado) {
+      // Detener polling (aunque usePlanificacion ya lo detiene si no es PROCESANDO/GENERANDO)
       isPollingEnabled.value = false; 
       metricas.value = nuevoEstado.resultado;
     } else if (nuevoEstado.estado === 'ERROR') {
@@ -207,10 +304,21 @@ watch(estadoOptimizacion, (nuevoEstado) => {
   }
 }, { deep: true });
 
+watch(isErrorSolicitud, (hasError) => {
+  if (hasError && (estadoLocal.value === 'PROCESANDO' || estadoLocal.value === 'GENERANDO')) {
+    estadoLocal.value = 'BORRADOR'; // Revert UI so user can try again
+  }
+});
+
 const ejecutarOptimizacion = () => {
   // Simulamos que al clickear cambia la UI y enviamos la mutación al Backend
-  estadoLocal.value = 'PROCESANDO';
-  solicitarOptimizacion(vehiculosSeleccionados.value);
+  if (vehiculosSeleccionados.value.length === 0) return;
+  
+  estadoLocal.value = 'GENERANDO';
+  solicitarOptimizacion({
+    vehiculosIds: vehiculosSeleccionados.value,
+    algoritmo: algoritmoSeleccionado.value
+  });
 };
 
 const getSeverity = (status: string) => {
@@ -236,19 +344,10 @@ const getRouteColor = (index: number) => {
   return routeColors[index % routeColors.length];
 };
 
-const getCoordenadasMock = (puntoId: string) => {
-  // Generamos algo de ruido basado en el ID para que los puntos se dispersen en el mapa alrededor del centro
-  const hash = puntoId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return {
-    lat: -20.6 + (hash % 10) * 0.01 * (hash % 2 === 0 ? 1 : -1),
-    lng: -64.9 + (hash % 7) * 0.015 * (hash % 3 === 0 ? 1 : -1)
-  };
-};
-
 const getRutaCoordenadas = (ruta: any) => {
   const coords = [{ lat: -20.6, lng: -64.9 }]; // Start at warehouse
   ruta.entregas.forEach((e: any) => {
-    coords.push(getCoordenadasMock(e.puntoEntregaId));
+    coords.push({ lat: e.latitud, lng: e.longitud });
   });
   coords.push({ lat: -20.6, lng: -64.9 }); // Return to warehouse
   return coords;

@@ -2,6 +2,7 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { OPTIMIZACION_PORT, OptimizacionPort } from '../../domain/ports/optimizacion.port';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { BusinessRuleException, NotFoundDomainException } from '../../../../shared/domain/exceptions/domain.exception';
+import { EstadoPlanificacion, EstadoOptimizacion } from '@prisma/client';
 
 @Injectable()
 export class SolicitarOptimizacionUseCase {
@@ -24,7 +25,7 @@ export class SolicitarOptimizacionUseCase {
       throw new NotFoundDomainException(`Planificación con ID ${planificacionId} no encontrada.`);
     }
 
-    if (planificacion.estado !== 'BORRADOR' && planificacion.estado !== 'ERROR' && planificacion.estado !== 'GENERADA') {
+    if (planificacion.estado !== EstadoPlanificacion.BORRADOR && planificacion.estado !== EstadoPlanificacion.ERROR && planificacion.estado !== EstadoPlanificacion.GENERADA) {
       throw new BusinessRuleException(`No se puede optimizar una planificación en estado: ${planificacion.estado}`);
     }
 
@@ -82,10 +83,10 @@ export class SolicitarOptimizacionUseCase {
       capacidadVolumenM3: Number(v.capacidadVolumenM3 || 10),
     }));
 
-    // 5. Cambiar el estado a PROCESANDO
+    // 5. Cambiar el estado a GENERANDO
     await this.prisma.planificacion.update({
       where: { id: planificacionId },
-      data: { estado: 'PROCESANDO' }
+      data: { estado: EstadoPlanificacion.GENERANDO }
     });
 
     // 6. Comunicarse con FastAPI
@@ -104,7 +105,7 @@ export class SolicitarOptimizacionUseCase {
         data: {
           planificacionId,
           algoritmo: 'OR-Tools VRPTW',
-          estado: 'PROCESANDO',
+          estado: EstadoOptimizacion.PROCESANDO,
           resultado: { jobId: iaResponse.jobId },
           iniciadoAt: new Date(),
         }
@@ -117,12 +118,24 @@ export class SolicitarOptimizacionUseCase {
         optimizacionId: optimizacion.id,
       };
 
-    } catch (error) {
-      // Revertir a ERROR si falla el envío
+    } catch (error: any) {
+      // Revertir a ERROR si falla el envío y guardar traza completa
       await this.prisma.planificacion.update({
         where: { id: planificacionId },
-        data: { estado: 'ERROR' }
+        data: { estado: EstadoPlanificacion.ERROR }
       });
+      
+      await this.prisma.optimizacion.create({
+        data: {
+          planificacionId,
+          algoritmo: algoritmo || 'KMEANS_ORTOOLS',
+          estado: EstadoOptimizacion.ERROR,
+          resultado: { error: error.message || 'Error desconocido al comunicar con la IA' },
+          iniciadoAt: new Date(),
+          finalizadoAt: new Date(),
+        }
+      });
+      
       throw error;
     }
   }

@@ -29,6 +29,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../../modules/dashboard/pages/DashboardPage.vue'),
       },
       {
+        path: 'optimizacion',
+        name: 'OptimizacionDemo',
+        component: () => import('../../modules/dashboard/pages/OptimizacionDemoPage.vue'),
+      },
+      {
         path: 'contratos',
         name: 'Contratos',
         component: () => import('../../modules/contratos/pages/ContratosPage.vue'),
@@ -39,6 +44,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../../modules/contratos/pages/ContratoDetallePage.vue'),
       },
       {
+        path: 'planificaciones',
+        name: 'Planificaciones',
+        component: () => import('../../modules/planificaciones/pages/PlanificacionesPage.vue'),
+      },
+      {
         path: 'planificaciones/:id',
         name: 'PlanificacionDetalle',
         component: () => import('../../modules/planificaciones/pages/PlanificacionDetallePage.vue'),
@@ -47,6 +57,26 @@ const routes: Array<RouteRecordRaw> = [
         path: 'vehiculos',
         name: 'Vehiculos',
         component: () => import('../../modules/vehiculos/pages/VehiculosPage.vue'),
+      },
+      {
+        path: 'jornadas',
+        name: 'Jornadas',
+        component: () => import('../../modules/jornadas/pages/JornadasPage.vue'),
+      },
+      {
+        path: 'puntos-entrega',
+        name: 'PuntosEntrega',
+        component: () => import('../../modules/puntos-entrega/pages/PuntosEntregaPage.vue'),
+      },
+      {
+        path: 'rutas',
+        name: 'Rutas',
+        component: () => import('../../modules/rutas/pages/RutasPage.vue'),
+      },
+      {
+        path: 'rutas/:id',
+        name: 'RutaDetalle',
+        component: () => import('../../modules/rutas/pages/RutaDetallePage.vue'),
       },
       // Rest of the routes will be added here
     ],
@@ -65,7 +95,7 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token'); 
 
   if (requiresAuth && !token) {
-    next('/auth/login');
+    next({ path: '/auth/login', query: { redirect: to.fullPath } });
   } else if (to.path === '/auth/login' && token) {
     next('/dashboard');
   } else {

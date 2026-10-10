@@ -19,7 +19,7 @@
         <i class="pi pi-search" />
         <InputText v-model="search" placeholder="Buscar por código o nombre..." class="w-full" @keyup.enter="aplicarFiltros" />
       </div>
-      <Select v-model="estadoFilter" :options="estados" placeholder="Estado" class="w-48" @change="aplicarFiltros" />
+      <Dropdown v-model="estadoFilter" :options="estados" placeholder="Estado" class="w-48" @change="aplicarFiltros" />
       <Button icon="pi pi-times" severity="secondary" text @click="limpiarFiltros" v-tooltip="'Limpiar filtros'" />
     </div>
 
@@ -104,7 +104,7 @@ import { useContratos } from '../composables/useContratos';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
-import Select from 'primevue/select';
+import Dropdown from 'primevue/dropdown';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
