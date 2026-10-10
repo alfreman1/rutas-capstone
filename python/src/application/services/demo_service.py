@@ -123,17 +123,24 @@ def optimize_synthetic_journey(num_points: int = 20, num_vehicles: int = 3, algo
             pedidos_cluster = [p for p in pedidos if p.punto_entrega_id in puntos_ids]
             
             res_parcial = optimizer.optimize(almacen=almacen, puntos=puntos_cluster, pedidos=pedidos_cluster, vehiculos=vehiculo_asignado)
-            if "rutas" in res_parcial:
-                rutas_totales.extend(res_parcial["rutas"])
-                distancia_total += res_parcial.get("distanciaTotalKm", 0)
-                tiempo_total += res_parcial.get("tiempoTotalMinutos", 0)
-                vehiculos_usados += 1
+            if "routes" in res_parcial:
+                rutas_totales.extend(res_parcial["routes"])
+                distancia_total += res_parcial.get("metrics", {}).get("distanceTotalKm", 0)
+                tiempo_total += res_parcial.get("metrics", {}).get("timeTotalMin", 0)
+                vehiculos_usados += res_parcial.get("metrics", {}).get("vehiclesUsed", 1)
                 
         resultado = {
-            "rutas": rutas_totales,
-            "distanciaTotalKm": round(distancia_total, 2),
-            "tiempoTotalMinutos": round(tiempo_total, 2),
-            "vehiculosUtilizados": vehiculos_usados
+            "status": "SUCCESS",
+            "algorithm": {
+                "clustering": "KMEANS",
+                "routing": "OR_TOOLS_CVRP"
+            },
+            "metrics": {
+                "distanceTotalKm": round(distancia_total, 2),
+                "timeTotalMin": round(tiempo_total, 2),
+                "vehiclesUsed": vehiculos_usados
+            },
+            "routes": rutas_totales
         }
     else:
         # Global OR-Tools
@@ -142,7 +149,7 @@ def optimize_synthetic_journey(num_points: int = 20, num_vehicles: int = 3, algo
     end_time = time.time()
     
     return {
-        "status": "COMPLETADA" if resultado and "rutas" in resultado else "ERROR",
+        "status": "COMPLETADA" if resultado and "routes" in resultado else "ERROR",
         "resultado": resultado,
         "tiempo_computo_segundos": round(end_time - start_time, 2),
         "algoritmo_usado": algorithm,

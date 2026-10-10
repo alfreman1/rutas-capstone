@@ -61,9 +61,8 @@ onMounted(() => {
   }).setView(center, props.options.zoom);
 
   // Agregar capa base (OpenStreetMap)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-    subdomains: 'abcd',
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: props.options.maxZoom || 19,
     minZoom: props.options.minZoom || 3
   }).addTo(map);
