@@ -1,1 +1,0 @@
-"""Educational capacitated route optimization."""
