@@ -3,15 +3,15 @@
     <!-- Encabezado Académico -->
     <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-8 text-white shadow-lg">
       <div class="flex items-center justify-between mb-2">
-        <p class="text-blue-400 font-semibold tracking-wider text-sm uppercase">Rutas VRP</p>
+        <p class="text-blue-400 font-semibold tracking-wider text-sm uppercase">Rutas</p>
         <Tag value="Modo Demo" severity="warning" rounded />
       </div>
       <h1 class="text-4xl font-bold mb-4">Evaluación de Modelos de Optimización</h1>
-      <p class="text-slate-300 max-w-3xl leading-relaxed">
+      <!-- <p class="text-slate-300 max-w-3xl leading-relaxed">
         Este entorno permite simular escenarios de distribución urbana para evaluar el rendimiento de algoritmos de ruteo vehicular (VRP). 
         Al ser un problema de optimización combinatoria, no se utilizan métricas de Machine Learning clásico (Accuracy, F1), sino que 
         se mide la <strong>reducción de distancia total</strong> y la <strong>eficiencia computacional</strong> al aplicar agrupamiento espacial.
-      </p>
+      </p> -->
     </div>
 
     <!-- Tabs/Secciones Informativas -->
@@ -232,8 +232,8 @@ const routeModeOptions = [
 ];
 
 const algorithmOptions = [
-  { label: 'Línea Base (Puro OR-Tools)', value: 'OR_TOOLS' },
-  { label: 'Modelo Propuesto (K-Means + OR-Tools)', value: 'KMEANS_ORTOOLS' }
+  { label: 'OR-Tools CVRP (Global)', value: 'OR_TOOLS' },
+  { label: 'Clustering (K-Means) + OR-Tools CVRP', value: 'KMEANS_ORTOOLS' }
 ];
 
 const isProcessing = ref(false);
